@@ -14,7 +14,6 @@ import com.ganghuitong.port.api.dto.biz.DispatchQueryReq;
 import com.ganghuitong.port.api.dto.biz.ShipLoadPageReq;
 import com.ganghuitong.port.api.entity.biz.Berth;
 import com.ganghuitong.port.api.entity.biz.BerthCargo;
-import com.ganghuitong.port.api.entity.biz.ShipLoad;
 import com.ganghuitong.port.api.enums.BerthStatusEnum;
 import com.ganghuitong.port.api.enums.CargoDirectionEnum;
 import com.ganghuitong.port.api.enums.CargoStatusEnum;
@@ -235,7 +234,7 @@ public class BerthServiceImpl implements BerthService {
                 return ConfirmResp.confirm("泊位【" + berth.getBerthName() + "】正在作业，转为维修将结束当前作业并取消待装载车辆，是否继续？");
             }
             if (isWorking(berth)) {
-                berthWorkHelper.closeWork(berth.getId());
+                berthWorkHelper.closeWork(berth.getId(), false);
             }
         } else if (StrUtil.equals(BerthStatusEnum.IDLE.getCode(), target)) {
             if (isWorking(berth)) {
@@ -266,27 +265,25 @@ public class BerthServiceImpl implements BerthService {
         }
         Map<String, Integer> waiting = toMap(dispatchMapper.countByBerth(Set.of(berth.getId()), DispatchStatusEnum.WAITING.getCode()));
         int waitingCount = waiting.getOrDefault(berth.getId(), 0);
-        long transitCount = berthWorkHelper.countInTransit(berth.getId());
-        long waitingShips = shipLoadMapper.selectCount(Wrappers.<ShipLoad>lambdaQuery()
-                .eq(ShipLoad::getBerthId, berth.getId())
-                .eq(ShipLoad::getStatus, ShipLoadStatusEnum.WAITING.getCode()));
-        if ((waitingCount > 0 || transitCount > 0 || waitingShips > 0) && !BooleanUtil.isTrue(req.getForce())) {
+        long unloadingShips = berthWorkHelper.countUnloadingShips(berth.getId());
+        long loadingShips = berthWorkHelper.countLoadingShips(berth.getId());
+        if ((waitingCount > 0 || unloadingShips > 0 || loadingShips > 0) && !BooleanUtil.isTrue(req.getForce())) {
             List<String> parts = new ArrayList<>();
-            if (transitCount > 0) {
-                parts.add(transitCount + "辆车运输中（将设为完成运输）");
+            if (unloadingShips > 0) {
+                parts.add(unloadingShips + "艘船正在卸货");
             }
+            if (loadingShips > 0) {
+                parts.add(loadingShips + "艘船正在装货");
+            }
+            String tail = unloadingShips + loadingShips > 0 ? "，这些船只将一并完成作业" : "";
             if (waitingCount > 0) {
                 parts.add(waitingCount + "辆车待装载（将取消分派）");
             }
-            if (waitingShips > 0) {
-                parts.add(waitingShips + "艘船待装船（将取消装船分派）");
-            }
             log.info("泊位[{}]完成作业需确认：{}", berth.getBerthName(), parts);
             return ConfirmResp.confirm("泊位【" + berth.getBerthName() + "】还有" + String.join("、", parts)
-                    + "，卸货船只将一并完成作业，是否继续？");
+                    + tail + "，已运出的车辆不受影响，是否继续？");
         }
-        berthWorkHelper.completeTrips(berth.getId());
-        berthWorkHelper.closeWork(berth.getId());
+        berthWorkHelper.closeWork(berth.getId(), true);
         berthWorkHelper.updateStatus(berth.getId(), BerthStatusEnum.IDLE.getCode());
         log.info("泊位[{}]已完成作业", berth.getBerthName());
         return ConfirmResp.done(berth.getId());

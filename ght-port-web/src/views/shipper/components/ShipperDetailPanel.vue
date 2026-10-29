@@ -57,7 +57,7 @@
                   <span>累计装货 <b class="num l">{{ fmtNum(sh.loadTonnage, 1) }}</b> 吨</span>
                 </div>
                 <div class="v-actions">
-                  <el-button v-if="sh.working && canComplete" type="success" size="small" plain icon="CircleCheck" @click="complete(sh)">完成运输</el-button>
+                  <el-button v-if="sh.working && canComplete" type="success" size="small" plain icon="CircleCheck" @click="complete(sh)">{{ completeLabel(sh.working) }}</el-button>
                   <span class="flex-1" />
                   <el-button v-if="canEdit" link type="primary" size="small" @click="editShip(sh)">编辑</el-button>
                   <el-button v-if="canEdit" link type="danger" size="small" @click="removeShip(sh)">删除</el-button>
@@ -77,7 +77,7 @@
             </div>
             <span class="dir" :style="dirStyle(sh.working.direction)">{{ workDesc(sh.working) }}</span>
             <div class="muted small time">{{ fmtTime(sh.working.startTime, 'MM-DD HH:mm') }}</div>
-            <el-button v-if="canComplete" type="success" size="small" plain @click="complete(sh)">完成运输</el-button>
+            <el-button v-if="canComplete" type="success" size="small" plain @click="complete(sh)">{{ completeLabel(sh.working) }}</el-button>
           </div>
         </el-tab-pane>
 
@@ -108,7 +108,7 @@
       </el-tabs>
     </template>
 
-    <el-dialog v-model="loadDialog.visible" title="完成装船" width="440px" append-to-body>
+    <el-dialog v-model="loadDialog.visible" title="完成装货" width="440px" append-to-body>
       <div class="load-tip">船只【{{ loadDialog.ship?.shipName }}】正在 {{ loadDialog.ship?.working?.berthName }} 装货（{{ loadDialog.ship?.working?.cargoName }}），请填写装船量：</div>
       <el-form label-width="84px">
         <el-form-item label="装船吨数" required><el-input-number v-model="loadDialog.loadTonnage" :min="0" :precision="3" controls-position="right" style="width: 200px" /><span class="unit">吨</span></el-form-item>
@@ -117,7 +117,7 @@
       </el-form>
       <template #footer>
         <el-button @click="loadDialog.visible = false">取消</el-button>
-        <el-button type="primary" :loading="loadDialog.saving" @click="submitLoad">完成装船</el-button>
+        <el-button type="primary" :loading="loadDialog.saving" @click="submitLoad">完成装货</el-button>
       </template>
     </el-dialog>
     <ShipFormDialog v-model="shipDialog" :data="shipData" :company-id="d?.company.id" :company-name="d?.company.companyName" @saved="refresh" />
@@ -161,6 +161,7 @@ const fleet = computed(() =>
   (d.value?.ships || []).filter((s) => !shipFilter.value || (shipFilter.value === 'WORKING' ? s.working : !s.working))
 )
 const workDesc = (w) => (w.direction === 'LOAD' ? '正在装货' : '正在卸货')
+const completeLabel = (w) => (w?.direction === 'LOAD' ? '完成装货' : '完成卸货')
 const dirStyle = (dir) => {
   const c = CARGO_DIRECTION[dir] || CARGO_DIRECTION.UNLOAD
   return { color: c.color, background: c.bg }
@@ -203,15 +204,15 @@ function editShip(sh) {
   shipData.value = sh ? { ...sh } : null
   shipDialog.value = true
 }
-/** 完成运输：卸货船只直接确认；装货船只需填写装船量 */
+/** 完成卸货：直接确认；完成装货：需填写装船量 */
 async function complete(sh) {
   if (sh.working?.direction === 'LOAD') {
     Object.assign(loadDialog, { visible: true, saving: false, ship: sh, loadTonnage: undefined, loadVolume: undefined, loadPieces: undefined })
     return
   }
-  await ElMessageBox.confirm(`确认船只【${sh.shipName}】已在 ${sh.working.berthName} 完成卸货（${sh.working.cargoName}）？`, '完成运输', { type: 'info' })
+  await ElMessageBox.confirm(`确认船只【${sh.shipName}】已在 ${sh.working.berthName} 完成卸货（${sh.working.cargoName}）？`, '完成卸货', { type: 'info' })
   await shipComplete({ shipId: sh.id })
-  ElMessage.success('已设置为完成运输')
+  ElMessage.success(`${sh.shipName} 卸货完成`)
   refresh()
 }
 async function submitLoad() {
@@ -223,7 +224,7 @@ async function submitLoad() {
   try {
     const { ship, loadTonnage, loadVolume, loadPieces } = loadDialog
     await shipComplete({ shipId: ship.id, loadTonnage, loadVolume, loadPieces })
-    ElMessage.success(`${ship.shipName} 装船完成`)
+    ElMessage.success(`${ship.shipName} 装货完成`)
     loadDialog.visible = false
     refresh()
   } finally {
