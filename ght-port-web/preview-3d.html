@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>港慧通 · 3D 港口场景预览（开发调试）</title>
+    <style>
+      html, body { margin: 0; height: 100%; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; }
+      #stage { position: fixed; inset: 0; }
+      .bar { position: fixed; top: 12px; left: 12px; display: flex; gap: 6px; z-index: 2; }
+      .bar button { border: 1px solid rgba(47, 91, 211, 0.3); background: #fff; color: #2f5bd3; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <!-- 开发调试页：无需登录与后端，直接用演示数据渲染 3D 港口场景（npm run dev 后访问 /preview-3d.html） -->
+    <div class="bar">
+      <button data-v="iso">斜视</button>
+      <button data-v="top">俯视</button>
+      <button data-v="front">平视</button>
+      <button data-m="edit">编辑模式</button>
+      <button data-m="berth">看板模式</button>
+    </div>
+    <div id="stage"></div>
+    <script type="module">
+      import { PortScene } from '/src/components/port3d/engine/PortScene.js'
+      import demo from '/src/components/port3d/demo-port.json'
+
+      const scene = new PortScene(document.getElementById('stage'), {
+        mode: 'berth',
+        handlers: { onElementClick: (uid) => console.log('click', uid), onElementDown: (e, uid) => scene.setSelected(uid) }
+      })
+      scene.setData({ elements: demo.elements, berthMap: demo.berthMap, width: 1600, height: 900, theme: 'DAY' })
+      window.__scene = scene
+      document.querySelectorAll('[data-v]').forEach((b) => (b.onclick = () => scene.fit(b.dataset.v)))
+      document.querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => scene.setMode(b.dataset.m)))
+    </script>
+  </body>
+</html>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ganghuitong.port.service.mapper.biz.VehicleMapper">
+
+    <!-- 命中索引 idx_vehicle_tenant_carrier(tenant_id, carrier_id, transport_status) -->
+    <select id="countByCarrier" resultType="com.ganghuitong.port.api.vo.biz.CountVO">
+        SELECT v.carrier_id AS bizId,
+               COUNT(1) AS cnt
+        FROM biz_vehicle v
+        WHERE v.deleted = 0
+          AND v.carrier_id IN
+        <foreach collection="carrierIds" item="cid" open="(" separator="," close=")">
+            #{cid}
+        </foreach>
+        <if test="transportStatus != null and transportStatus != ''">
+          AND v.transport_status = #{transportStatus}
+        </if>
+        GROUP BY v.carrier_id
+    </select>
+</mapper>

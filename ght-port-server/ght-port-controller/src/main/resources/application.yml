@@ -1,0 +1,39 @@
+server:
+  # 后端端口，默认 18080；也可通过环境变量 SERVER_PORT 覆盖
+  port: ${SERVER_PORT:18080}
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: ght-port-server
+  profiles:
+    active: dev
+  jackson:
+    time-zone: GMT+8
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  type-aliases-package: com.ganghuitong.port.api.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    banner: false
+    db-config:
+      id-type: assign_uuid
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+ght:
+  # JWT 签名密钥，生产环境务必修改为足够长的随机串
+  jwt-secret: GangHuiTong-Port-2026-ChangeMe-Please-Use-A-Long-Random-Secret
+  # 令牌有效期（小时）
+  token-expire-hours: 12
+  # 前端访问地址，用于生成司机出门条链接（司机手机需能访问）
+  web-base-url: http://localhost:5173
+
+logging:
+  level:
+    com.ganghuitong.port: info

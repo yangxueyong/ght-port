@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ganghuitong.port.service.mapper.biz.CockpitMapper">
+
+    <select id="selectCargoStat" resultType="com.ganghuitong.port.api.vo.biz.CockpitCargoRowVO">
+        SELECT c.berth_id AS berthId,
+               c.cargo_type_name AS typeName,
+               MAX(ct.color) AS color,
+               c.direction AS direction,
+               IFNULL(SUM(c.tonnage), 0) AS tonnage,
+               IFNULL(SUM(c.loaded_tonnage), 0) AS loadedTonnage,
+               IFNULL(SUM(c.volume), 0) AS volume,
+               IFNULL(SUM(c.loaded_volume), 0) AS loadedVolume,
+               COUNT(1) AS cnt
+        FROM biz_berth_cargo c
+        LEFT JOIN biz_cargo_type ct ON ct.id = c.cargo_type_id
+        WHERE c.deleted = 0
+          AND c.port_id = #{portId}
+        GROUP BY c.berth_id, c.cargo_type_name, c.direction
+    </select>
+
+    <select id="selectTripStat" resultType="com.ganghuitong.port.api.vo.biz.CockpitTripRowVO">
+        SELECT t.berth_id AS berthId,
+               COUNT(1) AS tripCount,
+               SUM(CASE WHEN t.status = #{inTransitStatus} THEN 1 ELSE 0 END) AS inTransitCount,
+               IFNULL(SUM(t.load_tonnage), 0) AS tonnage
+        FROM biz_transport_trip t
+        WHERE t.deleted = 0
+          AND t.port_id = #{portId}
+        GROUP BY t.berth_id
+    </select>
+
+    <select id="selectUnloadTrend" resultType="com.ganghuitong.port.api.vo.biz.TrendRowVO">
+        SELECT DATE_FORMAT(c.arrive_time, '%Y-%m-%d') AS day,
+               IFNULL(SUM(c.tonnage), 0) AS tonnage
+        FROM biz_berth_cargo c
+        WHERE c.deleted = 0
+          AND c.port_id = #{portId}
+          AND c.direction = 'UNLOAD'
+          AND c.arrive_time &gt;= #{since}
+        GROUP BY DATE_FORMAT(c.arrive_time, '%Y-%m-%d')
+    </select>
+
+    <select id="selectLoadTrend" resultType="com.ganghuitong.port.api.vo.biz.TrendRowVO">
+        SELECT DATE_FORMAT(l.load_time, '%Y-%m-%d') AS day,
+               IFNULL(SUM(l.load_tonnage), 0) AS tonnage
+        FROM biz_ship_load l
+        WHERE l.deleted = 0
+          AND l.port_id = #{portId}
+          AND l.status = 'LOADED'
+          AND l.load_time &gt;= #{since}
+        GROUP BY DATE_FORMAT(l.load_time, '%Y-%m-%d')
+    </select>
+
+    <!-- 命中索引 idx_trip_tenant_depart(tenant_id, depart_time) -->
+    <select id="selectTripTrend" resultType="com.ganghuitong.port.api.vo.biz.TrendRowVO">
+        SELECT DATE_FORMAT(t.depart_time, '%Y-%m-%d') AS day,
+               IFNULL(SUM(t.load_tonnage), 0) AS tonnage
+        FROM biz_transport_trip t
+        WHERE t.deleted = 0
+          AND t.port_id = #{portId}
+          AND t.depart_time &gt;= #{since}
+        GROUP BY DATE_FORMAT(t.depart_time, '%Y-%m-%d')
+    </select>
+</mapper>

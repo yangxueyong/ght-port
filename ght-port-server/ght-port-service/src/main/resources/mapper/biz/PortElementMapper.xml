@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ganghuitong.port.service.mapper.biz.PortElementMapper">
+
+    <!-- 命中索引 idx_pe_tenant_port(tenant_id, port_id)，租户条件由多租户插件追加 -->
+    <delete id="physicalDeleteByPort">
+        DELETE FROM biz_port_element
+        WHERE port_id = #{portId}
+    </delete>
+</mapper>

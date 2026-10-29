@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ganghuitong.port.service.mapper.biz.BerthMapper">
+
+    <!-- 命中索引 idx_berth_tenant_port_status(tenant_id, port_id, status) -->
+    <select id="selectStatusCount" resultType="com.ganghuitong.port.api.vo.biz.BerthStatusCountVO">
+        SELECT b.port_id AS portId,
+               b.status AS status,
+               COUNT(1) AS cnt
+        FROM biz_berth b
+        WHERE b.deleted = 0
+        GROUP BY b.port_id, b.status
+    </select>
+</mapper>

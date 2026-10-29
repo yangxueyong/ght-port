@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ganghuitong.port.service.mapper.biz.GatePassMapper">
+
+    <!-- 命中唯一索引 uk_gate_pass_token(access_token) -->
+    <select id="selectByTokenIgnoreTenant" resultType="com.ganghuitong.port.api.entity.biz.GatePass">
+        SELECT g.*
+        FROM biz_gate_pass g
+        WHERE g.access_token = #{token}
+          AND g.deleted = 0
+        LIMIT 1
+    </select>
+</mapper>

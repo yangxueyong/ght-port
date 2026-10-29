@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ganghuitong.port.service.mapper.biz.ShipMapper">
+
+    <sql id="shipVoColumns">
+        s.*, sp.company_name AS companyName
+    </sql>
+
+    <select id="selectOptions" resultType="com.ganghuitong.port.api.vo.biz.ShipVO">
+        SELECT <include refid="shipVoColumns"/>
+        FROM biz_ship s
+        INNER JOIN biz_shipping_company sp ON sp.id = s.company_id AND sp.deleted = 0
+        WHERE s.deleted = 0
+        <if test="req.parentId != null and req.parentId != ''">
+          AND s.company_id = #{req.parentId}
+        </if>
+        <if test="req.keyword != null and req.keyword != ''">
+          AND (s.ship_name LIKE CONCAT('%', #{req.keyword}, '%')
+               OR s.ship_no LIKE CONCAT('%', #{req.keyword}, '%')
+               OR sp.company_name LIKE CONCAT('%', #{req.keyword}, '%'))
+        </if>
+        ORDER BY sp.company_name ASC, s.ship_name ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectVoByIds" resultType="com.ganghuitong.port.api.vo.biz.ShipVO">
+        SELECT <include refid="shipVoColumns"/>
+        FROM biz_ship s
+        INNER JOIN biz_shipping_company sp ON sp.id = s.company_id
+        WHERE s.deleted = 0
+          AND s.id IN
+        <foreach collection="ids" item="sid" open="(" separator="," close=")">
+            #{sid}
+        </foreach>
+    </select>
+
+    <sql id="companyIdIn">
+        <foreach collection="companyIds" item="spid" open="(" separator="," close=")">
+            #{spid}
+        </foreach>
+    </sql>
+
+    <!-- 命中索引 idx_bcs_tenant_cargo；先按船运公司/船只与货物去重，避免同一批货物重复累计 -->
+    <select id="selectUnloadStat" resultType="com.ganghuitong.port.api.vo.biz.ShippingCompanyStatVO">
+        SELECT x.biz_id AS bizId,
+               SUM(c.tonnage) AS tonnage,
+               SUM(c.volume) AS volume,
+               COUNT(1) AS cnt
+        FROM (
+            SELECT DISTINCT <choose><when test="byShip">cs.ship_id</when><otherwise>cs.company_id</otherwise></choose> AS biz_id,
+                   cs.cargo_id
+            FROM biz_berth_cargo_ship cs
+            WHERE cs.deleted = 0
+              AND cs.company_id IN <include refid="companyIdIn"/>
+        ) x
+        INNER JOIN biz_berth_cargo c ON c.id = x.cargo_id AND c.deleted = 0 AND c.direction = 'UNLOAD'
+        GROUP BY x.biz_id
+    </select>
+
+    <!-- 命中索引 idx_sl_tenant_company_status(tenant_id, company_id, status) -->
+    <select id="selectLoadStat" resultType="com.ganghuitong.port.api.vo.biz.ShippingCompanyStatVO">
+        SELECT <choose><when test="byShip">l.ship_id</when><otherwise>l.company_id</otherwise></choose> AS bizId,
+               SUM(l.load_tonnage) AS tonnage,
+               SUM(l.load_volume) AS volume,
+               COUNT(1) AS cnt
+        FROM biz_ship_load l
+        WHERE l.deleted = 0
+          AND l.status = 'LOADED'
+          AND l.company_id IN <include refid="companyIdIn"/>
+        GROUP BY <choose><when test="byShip">l.ship_id</when><otherwise>l.company_id</otherwise></choose>
+    </select>
+
+    <select id="selectUnloadingShips" resultType="com.ganghuitong.port.api.vo.biz.WorkingShipVO">
+        SELECT cs.ship_id AS shipId,
+               c.berth_id AS berthId,
+               b.berth_name AS berthName,
+               c.id AS cargoId,
+               c.cargo_name AS cargoName,
+               'UNLOAD' AS direction,
+               c.arrive_time AS startTime
+        FROM biz_berth_cargo_ship cs
+        INNER JOIN biz_berth_cargo c ON c.id = cs.cargo_id AND c.deleted = 0 AND c.status = 'IN_PROGRESS'
+        INNER JOIN biz_berth b ON b.id = c.berth_id
+        WHERE cs.deleted = 0
+          AND cs.status = 'WORKING'
+          AND cs.company_id IN <include refid="companyIdIn"/>
+        ORDER BY c.arrive_time DESC
+    </select>
+
+    <select id="selectLoadingShips" resultType="com.ganghuitong.port.api.vo.biz.WorkingShipVO">
+        SELECT l.ship_id AS shipId,
+               l.berth_id AS berthId,
+               b.berth_name AS berthName,
+               l.cargo_id AS cargoId,
+               c.cargo_name AS cargoName,
+               l.id AS loadId,
+               'LOAD' AS direction,
+               l.create_time AS startTime
+        FROM biz_ship_load l
+        INNER JOIN biz_berth_cargo c ON c.id = l.cargo_id
+        INNER JOIN biz_berth b ON b.id = l.berth_id
+        WHERE l.deleted = 0
+          AND l.status = 'WAITING'
+          AND l.company_id IN <include refid="companyIdIn"/>
+        ORDER BY l.create_time DESC
+    </select>
+</mapper>

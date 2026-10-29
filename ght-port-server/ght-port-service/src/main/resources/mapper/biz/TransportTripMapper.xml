@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ganghuitong.port.service.mapper.biz.TransportTripMapper">
+
+    <!-- 命中索引 idx_trip_tenant_carrier_status(tenant_id, carrier_id, status) -->
+    <select id="selectCarrierStats" resultType="com.ganghuitong.port.api.vo.biz.CarrierStatVO">
+        SELECT t.carrier_id AS carrierId,
+               COUNT(1) AS tripCount,
+               SUM(CASE WHEN t.status = #{inTransitStatus} THEN 1 ELSE 0 END) AS inTransitCount,
+               IFNULL(SUM(t.load_tonnage), 0) AS totalTonnage,
+               IFNULL(SUM(t.load_volume), 0) AS totalVolume,
+               IFNULL(SUM(t.load_pieces), 0) AS totalPieces
+        FROM biz_transport_trip t
+        WHERE t.deleted = 0
+          AND t.carrier_id IN
+        <foreach collection="carrierIds" item="cid" open="(" separator="," close=")">
+            #{cid}
+        </foreach>
+        GROUP BY t.carrier_id
+    </select>
+
+    <select id="countByBerth" resultType="com.ganghuitong.port.api.vo.biz.CountVO">
+        SELECT t.berth_id AS bizId,
+               COUNT(1) AS cnt
+        FROM biz_transport_trip t
+        WHERE t.deleted = 0
+          AND t.status = #{status}
+          AND t.berth_id IN
+        <foreach collection="berthIds" item="bid" open="(" separator="," close=")">
+            #{bid}
+        </foreach>
+        GROUP BY t.berth_id
+    </select>
+
+    <!-- 命中索引 idx_trip_tenant_depart(tenant_id, depart_time) -->
+    <select id="sumTonnageSince" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(t.load_tonnage), 0)
+        FROM biz_transport_trip t
+        WHERE t.deleted = 0
+          AND t.depart_time &gt;= #{since}
+    </select>
+</mapper>

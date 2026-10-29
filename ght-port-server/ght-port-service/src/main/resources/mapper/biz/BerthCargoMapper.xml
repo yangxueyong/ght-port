@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ganghuitong.port.service.mapper.biz.BerthCargoMapper">
+
+    <!-- 按主键原子累加，租户条件由多租户插件追加 -->
+    <update id="increaseLoaded">
+        UPDATE biz_berth_cargo
+        SET loaded_tonnage = loaded_tonnage + #{tonnage},
+            loaded_volume = loaded_volume + #{volume},
+            loaded_pieces = loaded_pieces + #{pieces},
+            update_time = NOW()
+        WHERE id = #{cargoId}
+          AND deleted = 0
+    </update>
+</mapper>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ganghuitong.port.service.mapper.biz.DispatchMapper">
+
+    <!-- 命中索引 idx_dispatch_tenant_berth_status(tenant_id, berth_id, status) -->
+    <select id="countByBerth" resultType="com.ganghuitong.port.api.vo.biz.CountVO">
+        SELECT d.berth_id AS bizId,
+               COUNT(1) AS cnt
+        FROM biz_dispatch d
+        WHERE d.deleted = 0
+          AND d.status = #{status}
+          AND d.berth_id IN
+        <foreach collection="berthIds" item="bid" open="(" separator="," close=")">
+            #{bid}
+        </foreach>
+        GROUP BY d.berth_id
+    </select>
+</mapper>
